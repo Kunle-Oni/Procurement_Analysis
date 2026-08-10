@@ -1,0 +1,31 @@
+{
+  "MOBO15": {
+    "rows_in": 203265,
+    "rows_out": 203265,
+    "cells_mojibake_fixed": 0,
+    "cells_mojibake_flagged_for_review": 2,
+    "cells_whitespace_fixed": 27048,
+    "cells_id_float_suffix_fixed": 812956,
+    "rows_with_embedded_newline": 0,
+    "flagged_examples": [
+      "SCREW HEXAGON 0900776782 M10X20\u00c2\u00a0A2-70\u00c2",
+      "SCREW HEXAGON 0900776782 M10X20\u00c2\u00a0A2-70\u00c2"
+    ]
+  },
+  "MOBO25": {
+    "rows_in": 556928,
+    "rows_out": 556928,
+    "cells_mojibake_fixed": 0,
+    "cells_mojibake_flagged_for_review": 5,
+    "cells_whitespace_fixed": 46823,
+    "cells_id_float_suffix_fixed": 0,
+    "rows_with_embedded_newline": 158,
+    "flagged_examples": [
+      "Variline\u00e2\u20ac# Sample valve typeTSVUN-O",
+      "C.D.S.A 1.500\u00e2\u20ac#, - hilge pump",
+      "C\u00c2BLE H05VVC4V5-KG 4*1,5mm2",
+      "C\u00c2BLE OEFLEX CLASSIC110 3*0.75mm2",
+      "SCREW HEXAGON 0900776782 M10X20\u00c2\u00a0A2-70\u00c2"
+    ]
+  }
+}
