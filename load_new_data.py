@@ -576,7 +576,15 @@ def main():
         print("Usage: python load_new_data.py /path/to/dated_drop_folder/")
         sys.exit(1)
  
-    drop_folder = Path(sys.argv[1])
+    # .expanduser() converts a literal '~' into the real home folder
+    # path. Needed because '~' is normally expanded by the shell BEFORE
+    # a command even runs — but that only happens when bash parses it
+    # directly as part of typed command syntax. When a path comes
+    # through `read` (capturing raw keyboard input, as run_load.command
+    # does) or gets passed as a plain string some other way, the shell
+    # never gets a chance to expand it — Python would otherwise treat
+    # '~' as a literal folder name and fail with "Not a folder".
+    drop_folder = Path(sys.argv[1]).expanduser()
     if not drop_folder.is_dir():
         print(f"Not a folder: {drop_folder}")
         sys.exit(1)
@@ -622,4 +630,3 @@ def main():
  
 if __name__ == "__main__":
     main()
- 

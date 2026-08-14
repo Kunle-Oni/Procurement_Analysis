@@ -23814,3 +23814,15 @@ STOPPING — one or more tables had ambiguous file matches (see above). Fix the 
 2026-08-10 16:06:17,156 | INFO | LOAD RUN COMPLETE — row counts reconciled cleanly.
 2026-08-10 16:06:17,156 | INFO | ======================================================================
 
+2026-08-14 09:35:56,654 | INFO | ======================================================================
+2026-08-14 09:35:56,654 | INFO | LOAD RUN START — 2026-08-14T09:35:56.654460 — folder: /Users/kunleoni/Downloads/procurement_analysis/procurement_data/raw/2026-08-10
+2026-08-14 09:35:56,654 | INFO | ======================================================================
+2026-08-14 09:35:56,671 | WARNING |   SKIPPED — no file found for 'mobo25_stock' in /Users/kunleoni/Downloads/procurement_analysis/procurement_data/raw/2026-08-10
+2026-08-14 09:35:56,671 | WARNING |   SKIPPED — no file found for 'mm_minmax' in /Users/kunleoni/Downloads/procurement_analysis/procurement_data/raw/2026-08-10
+2026-08-14 09:35:56,671 | WARNING |   SKIPPED — no file found for 'ms_item_setup' in /Users/kunleoni/Downloads/procurement_analysis/procurement_data/raw/2026-08-10
+2026-08-14 09:35:56,672 | WARNING |   SKIPPED — no file found for 'mdb_item_master' in /Users/kunleoni/Downloads/procurement_analysis/procurement_data/raw/2026-08-10
+2026-08-14 09:35:56,672 | WARNING |   SKIPPED — no file found for 'si_site' in /Users/kunleoni/Downloads/procurement_analysis/procurement_data/raw/2026-08-10
+2026-08-14 09:35:56,672 | WARNING |   SKIPPED — no file found for 'cd_country' in /Users/kunleoni/Downloads/procurement_analysis/procurement_data/raw/2026-08-10
+2026-08-14 09:35:56,672 | WARNING |   SKIPPED — no file found for 'cx_currency_exchange' in /Users/kunleoni/Downloads/procurement_analysis/procurement_data/raw/2026-08-10
+2026-08-14 09:35:56,672 | INFO |   Loading (append, deduped on ['posting_date', 'site', 'mt_text', 'mt', 'item_document', 'item_no', 'item_description', 'quantity', 'base_uom', 'user_name', 'storage_location', 'Purchase_order']) mobo15_movements from MOBO15.xlsx ...
+2026-08-14 09:36:06,959 | INFO |     Cleaning pass (mobo15_movements): mojibake_fixed=2, whitespace_fixed=27048, id_float_suffix_fixed=0, mojibake_flagged_for_review=0
