@@ -60,7 +60,7 @@ Raw exports (CSV/XLSX)
          Dashboard / KPI Summary)
 ```
  
-Two views power the entire report — this was a deliberate design choice (see [Documentation](#documentation)) to minimize the Power BI import surface while keeping every calculation traceable to source SQL, not a DAX black box.
+Two views power the entire report — this was a deliberate design choice to minimize the Power BI import surface while keeping every calculation traceable to source SQL, not a DAX black box.
  
 ---
  
