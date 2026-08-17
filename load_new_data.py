@@ -1,52 +1,40 @@
 """
 load_new_data.py
-=================
-Run this whenever a new data drop arrives. Handles all 8 datasets
-correctly according to what KIND of data each one is — this is the
+
+Run this whenever a new data drop arrives. Handles all 8 datasets correctly according to what kind of data each one is, this is the
 single most important distinction in this whole automation:
  
-  SNAPSHOT tables (mobo25_stock, mm_minmax, ms_item_setup,
-  mdb_item_master, si_site, cd_country, cx_currency_exchange):
-  represent "right now" — the new file REPLACES the old one entirely.
+  SNAPSHOT tables (mobo25_stock, mm_minmax, ms_item_setup,cmdb_item_master, si_site, cd_country, cx_currency_exchange): 
+  represent "right now" - the new file replaces the old one entirely.
  
-  APPEND-ONLY table (mobo15_movements): a growing transaction history —
-  new rows are ADDED to what's already there, never replacing it.
-  Getting this backwards for mobo15_movements would silently destroy
-  transaction history and break every year-over-year and trailing-12mo
+  APPEND-ONLY table (mobo15_movements): a growing transaction history, new rows are added to what's already there, never replacing it.
+  Getting this backwards for mobo15_movements would silently destroy transaction history and break every year-over-year and trailing-12mo
   calculation in the project.
  
-Accepts BOTH .csv and .xlsx files interchangeably — for each table,
-the script looks for either extension in the drop folder and reads
-whichever one it finds, so you don't need to convert Excel exports
-to CSV by hand before running this.
+Accepts BOTH .csv and .xlsx files interchangeably for each table, the script looks for either extension in the drop folder and reads
+whichever one it finds, so you don't need to convert Excel exports to CSV by hand before running this.
  
 USAGE
 -----
-    python load_new_data.py /path/to/2026-07-21/
+    python load_new_data.py /path/to/new file/
  
-Expects the folder to contain the day's files, named to match
-SOURCE_FILES below (edit the mapping if your filenames differ) —
+Expects the folder to contain the day's files, named to match SOURCE_FILES below (edit the mapping if your filenames differ),
 either as .csv or .xlsx, whichever you were sent.
  
 WHAT IT DOES, IN ORDER
 -----------------------
-1. Archives nothing itself — you're expected to keep each drop in its
-   own dated folder (see the folder convention below); this script
+1. Archives nothing itself, you're expected to keep each drop in its own dated folder (see the folder convention below); this script
    only reads from wherever you point it.
 2. Loads each snapshot table with TRUNCATE + fresh load.
-3. Loads mobo15_movements by staging new rows, then inserting only
-   the ones that aren't already present (deduplicated on a chosen key
+3. Loads mobo15_movements by staging new rows, then inserting only the ones that aren't already present (deduplicated on a chosen key
    column — default: item_document).
-4. Runs a row-count parity check: source file rows vs. loaded table
-   rows, for every table.
-5. Runs v_data_quality_flags and v_currency_coverage_gap and reports
-   anything found — duplicate rows, missing FX rates, orphan site
+4. Runs a row-count parity check: source file rows vs. loaded table rows, for every table.
+5. Runs v_data_quality_flags and v_currency_coverage_gap and reports anything found — duplicate rows, missing FX rates, orphan site
    codes, unparseable dates.
-6. Writes a timestamped log entry to load_history.log so there's an
-   audit trail of every load, not just the most recent one.
+6. Writes a timestamped log entry to load_history.log so there's an audit trail of every load, not just the most recent one.
  
 RECOMMENDED FOLDER CONVENTION (keep every drop, never overwrite)
-------------------------------------------------------------------
+----------------------------------------------------------------
     /procurement_data/
       raw/
         2026-07-21/   <- first drop, untouched forever
@@ -69,35 +57,22 @@ from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine, text
  
-# =====================================================================
-# TEXT/ID CLEANING — merged from clean_mobo.py, run automatically as
-# step 1 of loading MOBO15/MOBO25, so nobody has to remember to run a
-# separate cleaning script before this one. Logic is unchanged from
-# the original clean_mobo.py; only the plumbing (operating on pandas
-# Series instead of raw csv.DictReader rows) is different.
-# =====================================================================
- 
-# Text that is really UTF-8 but got decoded once as Windows-1252/Latin-1
-# and re-saved as UTF-8 shows up as garbled multi-byte sequences (â€™,
-# Ã©, etc). Round-tripping through latin1 -> utf-8 fixes the common
-# cases without touching text that's already correct.
+
+# Text that is really UTF-8 but got decoded once as Windows-1252/Latin-1 and re-saved as UTF-8 shows up as garbled multi-byte sequences (â€™,
+# Ã©, etc). Round-tripping through latin1 -> utf-8 fixes the common cases without touching text that's already correct.
 MOJIBAKE_MARKERS = ("â€", "Ã¢", "Ã©", "Ã¯", "Ã¼", "Â")
 WS_RE = re.compile(r"[ \t\u00a0]+")   # tabs / non-breaking spaces collapse into a single space
 NEWLINE_RE = re.compile(r"[\r\n]+")
 FLOAT_SUFFIX_RE = re.compile(r"^(-?\d+)\.0$")
  
-# Which tables need the deeper text-hygiene pass (mojibake, whitespace,
-# ID float-suffix), and which of their columns. Matches the original
-# clean_mobo.py's scope — only MOBO15/MOBO25 had these issues found on
-# inspection. Extend this if a future extract from another table shows
-# the same symptoms.
-# Which tables have a DATE-typed column that arrives as a DD/MM/YYYY
-# text string and needs converting before it can be inserted into a
-# real SQL DATE column. Discovered the hard way: the first real INSERT
-# attempt against a live database failed with "Incorrect date value:
-# '01/08/2024'" — this conversion was missing entirely until then,
-# since every test up to that point used SQLite (which is lenient
+# Which tables need the deeper text-hygiene pass (mojibake, whitespace, ID float-suffix), and which of their columns - only MOBO15/MOBO25 had these issues found on
+# inspection. Extend this if a future extract from another table shows the same symptoms.
+# Which tables have a DATE-typed column that arrives as a DD/MM/YYYY text string and needs converting before it can be inserted into a
+# real SQL DATE column. Discovered the hard way: the first real INSERT attempt against a live database failed with "Incorrect date value:
+# '01/08/2024'" — this conversion was missing entirely until then, since every test up to that point used SQLite (which is lenient
 # about date formats) rather than a real MySQL DATE column.
+
+
 DATE_COLUMNS = {
     "mobo15_movements": ["posting_date"],
 }
@@ -221,12 +196,10 @@ def run_cleaning_pass(df: pd.DataFrame, table_name: str, log) -> pd.DataFrame:
  
 DB_CONNECTION_STRING = "mysql+pymysql://loader:LoaderPass2026@192.168.1.153:3306/inventory_procurement"
  
-# base filename (WITHOUT extension — the script auto-detects .csv or
-# .xlsx, whichever is actually in the drop folder) -> (table name,
-# load mode, dedup key)
+# base filename (WITHOUT extension — the script auto-detects .csv or .xlsx, whichever is actually in the drop folder) -> (table name, load mode, dedup key)
 # load mode: "replace" (snapshot) or "append" (transaction log)
-# dedup key: only used for "append" mode — the column that uniquely
-# identifies a transaction row, used to skip rows already loaded.
+# dedup key: only used for "append" mode - the column that uniquely identifies a transaction row, used to skip rows already loaded.
+
 SOURCE_FILES = {
     "mobo25_stock":         ("mobo25_stock",        "replace", None),
     "mm_minmax":            ("mm_minmax",            "replace", None),
@@ -235,31 +208,23 @@ SOURCE_FILES = {
     "si_site":              ("si_site",              "replace", None),
     "cd_country":           ("cd_country",            "replace", None),
     "cx_currency_exchange": ("cx_currency_exchange", "replace", None),
-    # dedup_key is a LIST of columns, not a single one — item_document
-    # alone looked like a safe unique transaction ID, but real data
-    # proved it isn't: the same item_document value recurs across many
-    # completely different dates/items/quantities (confirmed on a real
-    # file — one document number appeared 16 times across 16 different
-    # dates). Using it alone as a dedup key silently matched 100% of a
-    # 203,261-row file as "already loaded" when 196,410 of those rows
-    # were dated well past what the database actually contained.
-    # This composite (all 12 columns) was checked against the same real
-    # file and reduced 203,261 rows to just 5 genuine exact duplicates
+    # dedup_key is a LIST of columns, not a single one — item_document alone looked like a safe unique transaction ID, but real data
+    # proved it isn't: the same item_document value recurs across many completely different dates/items/quantities (confirmed on a real
+    # file — one document number appeared 16 times across 16 different dates). Using it alone as a dedup key silently matched 100% of a
+    # 203,261-row file as "already loaded" when 196,410 of those rows were dated well past what the database actually contained.
+    # This composite (all 12 columns) was checked against the same real file and reduced 203,261 rows to just 5 genuine exact duplicates
     # — the right level of specificity to trust.
     "mobo15_movements": ("mobo15_movements", "append", [
         "posting_date", "site", "mt_text", "mt", "item_document", "item_no",
         "item_description", "quantity", "base_uom", "user_name",
         "storage_location", "Purchase_order",
     ]),
-    # If your MOBO15 file arrives named just "MOBO15.xlsx", either
-    # rename it to "mobo15_movements.xlsx" before running, or add an
+    # If your MOBO15 file arrives named just "MOBO15.xlsx", either rename it to "mobo15_movements.xlsx" before running, or add an
     # extra line here matching the pattern above.
 }
  
-# Columns that MUST be forced to text on load — these are the exact
-# columns that broke Power BI search/filtering earlier in this project
-# when auto-detected as numbers instead. Extend this list if a new
-# ID-like column starts causing the same problem.
+# Columns that MUST be forced to text on load — these are the exact columns that broke Power BI search/filtering earlier in this project
+# when auto-detected as numbers instead. Extend this list if a new ID-like column starts causing the same problem.
 FORCE_TEXT_COLUMNS = [
     "item_no", "site", "mpn", "MPN", "purchase_order",
     "item_document", "tp_item_no", "tp_source_site", "tp_target_site",
@@ -282,12 +247,9 @@ logging.getLogger().addHandler(console)
 log = logging.getLogger()
  
  
-# base name used for the database table -> acceptable filename tokens
-# (case-insensitive, matched as a whole token split on -, _, space —
-# NOT a raw substring match, since short codes like "MS" or "SI" would
-# false-positive against unrelated words like "items" or "missing").
-# Includes both the actual short codes this project's real files use
-# (SI, CD, CX, MM, MS, MDB, MOBO15, MOBO25) and longer descriptive
+# base name used for the database table -> acceptable filename tokens (case-insensitive, matched as a whole token split on -, _, space —
+# NOT a raw substring match, since short codes like "MS" or "SI" would false-positive against unrelated words like "items" or "missing").
+# Includes both the actual short codes this project's real files use (SI, CD, CX, MM, MS, MDB, MOBO15, MOBO25) and longer descriptive
 # fallbacks in case a future drop is named differently.
 SEARCH_KEYWORDS = {
     "mobo25_stock":         ["mobo25"],
@@ -408,12 +370,10 @@ def load_snapshot_table(engine, file_path: Path, table_name: str):
     log.info(f"  Loading (replace) {table_name} from {file_path.name} ...")
     df = read_source_file(file_path)
  
-    # Step 1: deep text/ID cleaning — only runs for tables in
-    # CLEANING_CONFIG (currently mobo25_stock); no-op for everything else.
+    # Step 1: deep text/ID cleaning — only runs for tables in CLEANING_CONFIG (currently mobo25_stock); no-op for everything else.
     df = run_cleaning_pass(df, table_name, log)
  
-    # Step 1b: convert any DD/MM/YYYY date columns before they reach a
-    # real SQL DATE column. No-op for tables without one configured.
+    # Step 1b: convert any DD/MM/YYYY date columns before they reach a real SQL DATE column. No-op for tables without one configured.
     for col in DATE_COLUMNS.get(table_name, []):
         if col in df.columns:
             unparseable_before = df[col].isna().sum()
@@ -424,16 +384,13 @@ def load_snapshot_table(engine, file_path: Path, table_name: str):
                 log.warning(f"    {newly_unparseable} value(s) in '{col}' didn't match DD/MM/YYYY "
                              f"(e.g. the historical 'Not_found' placeholder) — set to NULL rather than crashing the load.")
  
-    # Step 2: force ID-like columns to text, with a defensive .0-suffix
-    # strip applied to EVERY table, not just the ones in CLEANING_CONFIG
-    # — a cheap backstop in case a future table develops the same
-    # export artifact that MOBO15/MOBO25 had.
+    # Step 2: force ID-like columns to text, with a defensive .0-suffix strip applied to EVERY table, not just the ones in CLEANING_CONFIG
+    # — a cheap backstop in case a future table develops the same export artifact that MOBO15/MOBO25 had.
     for col in df.columns:
         if col in FORCE_TEXT_COLUMNS:
             df[col] = df[col].apply(clean_id_cell)
  
-    # Step 3: catch any cell that became the literal text 'nan'/'none'
-    # somewhere above and convert it back to a true missing value —
+    # Step 3: catch any cell that became the literal text 'nan'/'none' somewhere above and convert it back to a true missing value —
     # see normalize_missing_values() docstring for why this exists.
     df = normalize_missing_values(df)
  
@@ -458,25 +415,19 @@ def build_composite_key(df: pd.DataFrame, key_cols: list) -> pd.Series:
  
  
 def load_append_table(engine, file_path: Path, table_name: str, dedup_key):
-    # dedup_key is a list of columns forming a composite key — see the
-    # SOURCE_FILES comment for why a single column (item_document)
+    # dedup_key is a list of columns forming a composite key — see the SOURCE_FILES comment for why a single column (item_document)
     # turned out to be unreliable on real data.
     key_cols = dedup_key if isinstance(dedup_key, list) else [dedup_key]
     log.info(f"  Loading (append, deduped on {key_cols}) {table_name} from {file_path.name} ...")
     df = read_source_file(file_path)
  
-    # Same two-step cleaning as the snapshot loader — this is the path
-    # mobo15_movements actually goes through.
+    # Same two-step cleaning as the snapshot loader — this is the path mobo15_movements actually goes through.
     df = run_cleaning_pass(df, table_name, log)
  
-    # Convert DD/MM/YYYY date columns BEFORE anything downstream uses
-    # them — critically, before the composite dedup key gets built a
-    # few lines down. If the new file's dates were left as raw text
-    # while the EXISTING database rows come back from pd.read_sql as
-    # proper date objects, the composite key would mismatch on every
-    # single row purely from date formatting — silently recreating the
-    # "everything looks new" bug this dedup rewrite was built to fix,
-    # just from a different cause.
+    # Convert DD/MM/YYYY date columns BEFORE anything downstream uses them — critically, before the composite dedup key gets built a
+    # few lines down. If the new file's dates were left as raw text while the EXISTING database rows come back from pd.read_sql as
+    # proper date objects, the composite key would mismatch on every single row purely from date formatting — silently recreating the
+    # "everything looks new" bug this dedup rewrite was built to fix, just from a different cause.
     for col in DATE_COLUMNS.get(table_name, []):
         if col in df.columns:
             unparseable_before = df[col].isna().sum()
@@ -491,8 +442,7 @@ def load_append_table(engine, file_path: Path, table_name: str, dedup_key):
         if col in FORCE_TEXT_COLUMNS:
             df[col] = df[col].apply(clean_id_cell)
  
-    # Same defensive pass as the snapshot loader — run BEFORE the dedup
-    # comparison below, so a literal 'nan' string can't get treated as
+    # Same defensive pass as the snapshot loader — run BEFORE the dedup comparison below, so a literal 'nan' string can't get treated as
     # a real, matchable key value.
     df = normalize_missing_values(df)
  
@@ -576,14 +526,10 @@ def main():
         print("Usage: python load_new_data.py /path/to/dated_drop_folder/")
         sys.exit(1)
  
-    # .expanduser() converts a literal '~' into the real home folder
-    # path. Needed because '~' is normally expanded by the shell BEFORE
-    # a command even runs — but that only happens when bash parses it
-    # directly as part of typed command syntax. When a path comes
-    # through `read` (capturing raw keyboard input, as run_load.command
-    # does) or gets passed as a plain string some other way, the shell
-    # never gets a chance to expand it — Python would otherwise treat
-    # '~' as a literal folder name and fail with "Not a folder".
+    # .expanduser() converts a literal '~' into the real home folder path. Needed because '~' is normally expanded by the shell BEFORE
+    # a command even runs — but that only happens when bash parses it directly as part of typed command syntax. When a path comes
+    # through `read` (capturing raw keyboard input, as run_load.command does) or gets passed as a plain string some other way, the shell
+    # never gets a chance to expand it — Python would otherwise treat '~' as a literal folder name and fail with "Not a folder".
     drop_folder = Path(sys.argv[1]).expanduser()
     if not drop_folder.is_dir():
         print(f"Not a folder: {drop_folder}")
