@@ -22,7 +22,7 @@ to CSV by hand before running this.
  
 USAGE
 -----
-    python load_new_data.py /path/to/2026-09-01/
+    python load_new_data.py /path/to/2026-07-21/
  
 Expects the folder to contain the day's files, named to match
 SOURCE_FILES below (edit the mapping if your filenames differ) —
@@ -49,8 +49,8 @@ RECOMMENDED FOLDER CONVENTION (keep every drop, never overwrite)
 ------------------------------------------------------------------
     /procurement_data/
       raw/
-        2026-08-04/   <- first drop, untouched forever
-        2026-09-01/   <- second drop, untouched forever
+        2026-07-21/   <- first drop, untouched forever
+        2026-08-10/   <- second drop, untouched forever
         ...
  
 BEFORE RUNNING FOR REAL
