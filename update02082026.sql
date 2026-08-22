@@ -105,7 +105,7 @@ transfer_targets_agg AS (
         GROUP_CONCAT(
             CONCAT(tgt.site_name, ' (', COALESCE(tgt.movement_status, 'n/a'), '/', tgt.stock_position,
                    ', qty: ', tgt.on_hand_qty, ')')
-            ORDER BY tgt.site_name SEPARATOR '\n'
+            ORDER BY tgt.site_name SEPARATOR '; '
         ) AS transfer_targets
     FROM enriched src
     JOIN enriched tgt
@@ -123,7 +123,7 @@ transfer_sources_agg AS (
         GROUP_CONCAT(
             CONCAT(src.site_name, ' (', src.movement_status,
                    ', qty available: ', src.on_hand_qty, ')')
-            ORDER BY src.site_name SEPARATOR '\n'
+            ORDER BY src.site_name SEPARATOR '; '
         ) AS transfer_sources
     FROM enriched tgt
     JOIN enriched src
@@ -281,7 +281,10 @@ reorder_ranked AS (
 ),
 reorder_by_year AS (
     SELECT
-        yr, COUNT(*) AS reorder_freq_n, ROUND(AVG(distinct_pos),2) AS reorder_freq_mean, MAX(distinct_pos) AS reorder_freq_max,
+        yr, 
+        COUNT(*) AS reorder_freq_n, 
+        ROUND(AVG(distinct_pos),2) AS reorder_freq_mean, 
+        MAX(distinct_pos) AS reorder_freq_max,
         AVG(CASE WHEN rn IN (FLOOR((cnt+1)/2), CEIL((cnt+1)/2)) THEN distinct_pos END) AS reorder_freq_median
     FROM (
         SELECT yr, distinct_pos,
